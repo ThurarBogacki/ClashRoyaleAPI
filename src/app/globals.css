@@ -1,0 +1,157 @@
+
+@import "tailwindcss";
+
+:root {
+  --arena-gold: #ffc247;
+  --arena-blue: #38bdf8;
+  --arena-purple: #a855f7;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: #050816;
+}
+
+.arena-bg {
+  background:
+    radial-gradient(ellipse at 50% 0%, #172554 0%, transparent 48%),
+    radial-gradient(ellipse at 0% 45%, #17255455 0%, transparent 35%),
+    radial-gradient(ellipse at 100% 75%, #581c8750 0%, transparent 35%),
+    #050816;
+  position: relative;
+  isolation: isolate;
+}
+
+.arena-grid {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(#60a5fa08 1px, transparent 1px),
+    linear-gradient(90deg, #60a5fa08 1px, transparent 1px);
+  background-size: 42px 42px;
+  mask-image: linear-gradient(to bottom, black, transparent 85%);
+}
+
+.arena-aurora {
+  position: absolute;
+  inset: -25%;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0.72;
+}
+
+.arena-aurora::before,
+.arena-aurora::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  will-change: transform;
+}
+
+.arena-aurora::before {
+  background:
+    radial-gradient(ellipse at 22% 28%, rgb(14 165 233 / 22%), transparent 34%),
+    radial-gradient(ellipse at 78% 32%, rgb(168 85 247 / 21%), transparent 35%),
+    radial-gradient(ellipse at 50% 78%, rgb(245 158 11 / 12%), transparent 38%);
+  filter: blur(30px);
+  animation: arena-aurora-drift 24s ease-in-out infinite alternate;
+}
+
+.arena-aurora::after {
+  background:
+    radial-gradient(ellipse at 72% 68%, rgb(56 189 248 / 13%), transparent 32%),
+    radial-gradient(ellipse at 30% 75%, rgb(217 70 239 / 12%), transparent 34%);
+  filter: blur(48px);
+  animation: arena-aurora-drift 32s ease-in-out -8s infinite alternate-reverse;
+}
+
+.royale-panel {
+  background: linear-gradient(
+    145deg,
+    rgb(15 23 52 / 95%),
+    rgb(8 12 30 / 97%)
+  );
+  border: 1px solid rgb(148 163 184 / 18%);
+  box-shadow:
+    0 16px 50px #00000040,
+    inset 0 1px rgb(255 255 255 / 5%);
+  backdrop-filter: blur(16px);
+}
+
+.gold-glow {
+  box-shadow:
+    0 0 0 1px #fbbf2430,
+    0 0 25px #f59e0b18,
+    inset 0 1px #ffffff0a;
+}
+
+.blue-glow {
+  box-shadow: 0 0 30px #0ea5e922;
+}
+
+.purple-glow {
+  box-shadow: 0 0 30px #a855f722;
+}
+
+@keyframes arena-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-7px); }
+}
+
+@keyframes arena-pulse {
+  0%, 100% { opacity: .45; }
+  50% { opacity: 1; }
+}
+
+@keyframes arena-aurora-drift {
+  0% { transform: translate3d(-3%, -2%, 0) scale(1); }
+  50% { transform: translate3d(2%, 3%, 0) scale(1.08); }
+  100% { transform: translate3d(4%, -1%, 0) scale(1.02); }
+}
+
+@keyframes arena-shine {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+.arena-float {
+  animation: arena-float 4s ease-in-out infinite;
+}
+
+.arena-pulse {
+  animation: arena-pulse 2.5s ease-in-out infinite;
+}
+
+.royale-button {
+  background: linear-gradient(110deg, #f59e0b, #fcd34d, #f59e0b);
+  background-size: 200% 100%;
+  box-shadow: 0 5px 0 #92400e, 0 8px 25px #f59e0b25;
+  transition: transform .2s, box-shadow .2s, filter .2s;
+}
+
+.royale-button:hover {
+  background-position: 100% 0;
+  transform: translateY(-2px);
+  filter: brightness(1.1);
+  box-shadow: 0 7px 0 #92400e, 0 12px 35px #f59e0b40;
+}
+
+.royale-button:active {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 #92400e;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: .01ms !important;
+  }
+}

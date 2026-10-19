@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const res = await fetch(`https://api.clashroyale.com/v1/players/${encodedTag}`, {
+    const res = await fetch(`https://proxy.royaleapi.dev/v1/players/${encodedTag}`, {
       headers: {
         Authorization: `Bearer ${token}`,
         Accept: "application/json",

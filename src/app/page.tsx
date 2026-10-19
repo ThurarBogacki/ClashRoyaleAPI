@@ -11,15 +11,18 @@ import {
   Medal,
   Flame,
   Clock,
-  Gift,
-  ArrowDownToLine,
   Target,
-  Award,
-  Users,
   Layers,
   Sparkles,
   RefreshCw,
+  type LucideIcon,
 } from "lucide-react";
+
+interface PlayerCard {
+  level?: number;
+  maxLevel?: number;
+  evolutionLevel?: number;
+}
 
 interface Player {
   tag: string;
@@ -33,29 +36,27 @@ interface Player {
   threeCrownWins: number;
   tournamentCardsWon?: number;
   tournamentBattleCount?: number;
-  clanCardsCollected?: number;
-  donations?: number;
-  donationsReceived?: number;
-  totalDonations?: number;
-  warDayWins?: number;
-  arena?: { name: string };
+  challengeCardsWon?: number;
+  challengeMaxWins?: number;
+  arena?: { id?: number; name?: string };
   clan?: { name: string; tag: string };
-  badges?: any[];
-  cards: any[];
+  cards?: PlayerCard[];
 }
 
 interface StatComparison {
   label: string;
   key: string;
-  icon: any;
+  icon: LucideIcon;
   val1: number;
   val2: number;
   displayVal1: string;
   displayVal2: string;
   winner: 1 | 2 | 0;
+  detailVal1?: string;
+  detailVal2?: string;
+  countsForScore?: boolean;
+  lowerIsBetter?: boolean;
 }
-
-const TOTAL_CARDS_IN_GAME = 123;
 
 function Reveal({
   children,
@@ -135,24 +136,35 @@ export default function Home() {
 
       setP1(data1);
       setP2(data2);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setErrorMsg(err.message || "Erro ao conectar com a API da Supercell.");
+      setErrorMsg(
+        err instanceof Error
+          ? err.message
+          : "Erro ao conectar com a API da Supercell.",
+      );
     } finally {
       setLoading(false);
     }
   };
 
   const calculateComparisons = (player1: Player, player2: Player): StatComparison[] => {
-    const winrate = (p: Player) =>
-      p.battleCount > 0
-        ? Number(((p.wins / p.battleCount) * 100).toFixed(1))
-        : 0;
+    const percentage = (count: number, total: number) =>
+      total > 0 ? Number(((count / total) * 100).toFixed(1)) : null;
+    const winRate = (player: Player) => percentage(player.wins, player.battleCount);
+    const lossRate = (player: Player) => percentage(player.losses, player.battleCount);
+    const threeCrownRate = (player: Player) => percentage(player.threeCrownWins, player.wins);
+    const cardsCount = (player: Player) => player.cards?.length ?? 0;
+    const maxLevelCards = (player: Player) =>
+      player.cards?.filter(
+        (card) => card.level !== undefined && card.maxLevel !== undefined && card.level >= card.maxLevel,
+      ).length ?? 0;
+    const evolvedCards = (player: Player) =>
+      player.cards?.filter((card) => (card.evolutionLevel ?? 0) > 0).length ?? 0;
+    const rateLabel = (rate: number | null) => (rate === null ? "—" : `${rate}%`);
+    const numberLabel = (value: number | undefined) => (value ?? 0).toLocaleString("pt-BR");
 
-    const cardsCount1 = player1.cards?.length || 0;
-    const cardsCount2 = player2.cards?.length || 0;
-
-    const stats = [
+    const stats: Omit<StatComparison, "key" | "winner">[] = [
       {
         label: "Nível do Rei",
         val1: player1.expLevel || 0,
@@ -179,35 +191,33 @@ export default function Home() {
       },
       {
         label: "Taxa de vitória",
-        val1: winrate(player1),
-        val2: winrate(player2),
-        displayVal1: `${winrate(player1)}%`,
-        displayVal2: `${winrate(player2)}%`,
+        val1: winRate(player1) ?? 0,
+        val2: winRate(player2) ?? 0,
+        displayVal1: rateLabel(winRate(player1)),
+        displayVal2: rateLabel(winRate(player2)),
+        detailVal1: `${numberLabel(player1.wins)} vitórias`,
+        detailVal2: `${numberLabel(player2.wins)} vitórias`,
         icon: Flame,
       },
       {
-        label: "Total de vitórias",
-        val1: player1.wins || 0,
-        val2: player2.wins || 0,
-        displayVal1: (player1.wins || 0).toLocaleString("pt-BR"),
-        displayVal2: (player2.wins || 0).toLocaleString("pt-BR"),
-        icon: Swords,
-      },
-      {
-        label: "Derrotas",
-        val1: player1.losses || 0,
-        val2: player2.losses || 0,
-        displayVal1: (player1.losses || 0).toLocaleString("pt-BR"),
-        displayVal2: (player2.losses || 0).toLocaleString("pt-BR"),
+        label: "Taxa de derrotas",
+        val1: lossRate(player1) ?? 0,
+        val2: lossRate(player2) ?? 0,
+        displayVal1: rateLabel(lossRate(player1)),
+        displayVal2: rateLabel(lossRate(player2)),
+        detailVal1: `${numberLabel(player1.losses)} derrotas`,
+        detailVal2: `${numberLabel(player2.losses)} derrotas`,
         icon: Target,
         lowerIsBetter: true,
       },
       {
         label: "Vitórias por 3 coroas",
-        val1: player1.threeCrownWins || 0,
-        val2: player2.threeCrownWins || 0,
-        displayVal1: (player1.threeCrownWins || 0).toLocaleString("pt-BR"),
-        displayVal2: (player2.threeCrownWins || 0).toLocaleString("pt-BR"),
+        val1: threeCrownRate(player1) ?? 0,
+        val2: threeCrownRate(player2) ?? 0,
+        displayVal1: rateLabel(threeCrownRate(player1)),
+        displayVal2: rateLabel(threeCrownRate(player2)),
+        detailVal1: `${numberLabel(player1.threeCrownWins)} de ${numberLabel(player1.wins)} vitórias`,
+        detailVal2: `${numberLabel(player2.threeCrownWins)} de ${numberLabel(player2.wins)} vitórias`,
         icon: Crown,
       },
       {
@@ -217,68 +227,71 @@ export default function Home() {
         displayVal1: (player1.battleCount || 0).toLocaleString("pt-BR"),
         displayVal2: (player2.battleCount || 0).toLocaleString("pt-BR"),
         icon: Swords,
+        countsForScore: false,
       },
       {
         label: "Cartas desbloqueadas",
-        val1: cardsCount1,
-        val2: cardsCount2,
-        displayVal1: `${cardsCount1} / ${TOTAL_CARDS_IN_GAME}`,
-        displayVal2: `${cardsCount2} / ${TOTAL_CARDS_IN_GAME}`,
+        val1: cardsCount(player1),
+        val2: cardsCount(player2),
+        displayVal1: cardsCount(player1).toLocaleString("pt-BR"),
+        displayVal2: cardsCount(player2).toLocaleString("pt-BR"),
         icon: Layers,
       },
       {
-        label: "Cartas de clã coletadas",
-        val1: player1.clanCardsCollected || 0,
-        val2: player2.clanCardsCollected || 0,
-        displayVal1: (player1.clanCardsCollected || 0).toLocaleString("pt-BR"),
-        displayVal2: (player2.clanCardsCollected || 0).toLocaleString("pt-BR"),
+        label: "Cartas no nível máximo",
+        val1: maxLevelCards(player1),
+        val2: maxLevelCards(player2),
+        displayVal1: maxLevelCards(player1).toLocaleString("pt-BR"),
+        displayVal2: maxLevelCards(player2).toLocaleString("pt-BR"),
+        icon: Medal,
+      },
+      {
+        label: "Cartas com evolução",
+        val1: evolvedCards(player1),
+        val2: evolvedCards(player2),
+        displayVal1: evolvedCards(player1).toLocaleString("pt-BR"),
+        displayVal2: evolvedCards(player2).toLocaleString("pt-BR"),
+        icon: Sparkles,
+      },
+      {
+        label: "Maior sequência em desafio",
+        val1: player1.challengeMaxWins || 0,
+        val2: player2.challengeMaxWins || 0,
+        displayVal1: numberLabel(player1.challengeMaxWins),
+        displayVal2: numberLabel(player2.challengeMaxWins),
+        icon: Trophy,
+      },
+      {
+        label: "Cartas ganhas em desafios",
+        val1: player1.challengeCardsWon || 0,
+        val2: player2.challengeCardsWon || 0,
+        displayVal1: numberLabel(player1.challengeCardsWon),
+        displayVal2: numberLabel(player2.challengeCardsWon),
+        icon: Crown,
+      },
+      {
+        label: "Cartas ganhas em torneios",
+        val1: player1.tournamentCardsWon || 0,
+        val2: player2.tournamentCardsWon || 0,
+        displayVal1: numberLabel(player1.tournamentCardsWon),
+        displayVal2: numberLabel(player2.tournamentCardsWon),
+        icon: Layers,
+      },
+      {
+        label: "Arena atual",
+        val1: player1.arena?.id || 0,
+        val2: player2.arena?.id || 0,
+        displayVal1: player1.arena?.name || "Não informada",
+        displayVal2: player2.arena?.name || "Não informada",
         icon: Shield,
-      },
-      {
-        label: "Doações feitas (semana)",
-        val1: player1.donations || 0,
-        val2: player2.donations || 0,
-        displayVal1: (player1.donations || 0).toLocaleString("pt-BR"),
-        displayVal2: (player2.donations || 0).toLocaleString("pt-BR"),
-        icon: Gift,
-      },
-      {
-        label: "Doações recebidas",
-        val1: player1.donationsReceived || 0,
-        val2: player2.donationsReceived || 0,
-        displayVal1: (player1.donationsReceived || 0).toLocaleString("pt-BR"),
-        displayVal2: (player2.donationsReceived || 0).toLocaleString("pt-BR"),
-        icon: ArrowDownToLine,
-      },
-      {
-        label: "Total de doações históricas",
-        val1: player1.totalDonations || 0,
-        val2: player2.totalDonations || 0,
-        displayVal1: (player1.totalDonations || 0).toLocaleString("pt-BR"),
-        displayVal2: (player2.totalDonations || 0).toLocaleString("pt-BR"),
-        icon: Gift,
-      },
-      {
-        label: "Vitórias em guerra de clãs",
-        val1: player1.warDayWins || 0,
-        val2: player2.warDayWins || 0,
-        displayVal1: (player1.warDayWins || 0).toLocaleString("pt-BR"),
-        displayVal2: (player2.warDayWins || 0).toLocaleString("pt-BR"),
-        icon: Award,
-      },
-      {
-        label: "Emblemas / conquistas",
-        val1: player1.badges?.length || 0,
-        val2: player2.badges?.length || 0,
-        displayVal1: `${player1.badges?.length || 0}`,
-        displayVal2: `${player2.badges?.length || 0}`,
-        icon: Users,
       },
     ];
 
     return stats.map((stat) => {
       let winner: 1 | 2 | 0 = 0;
-      if ("lowerIsBetter" in stat && stat.lowerIsBetter) {
+      if (stat.countsForScore === false) {
+        winner = 0;
+      } else if ("lowerIsBetter" in stat && stat.lowerIsBetter) {
         if (stat.val1 < stat.val2) winner = 1;
         else if (stat.val2 < stat.val1) winner = 2;
       } else {
@@ -295,13 +308,16 @@ export default function Home() {
         displayVal1: stat.displayVal1,
         displayVal2: stat.displayVal2,
         winner,
+        detailVal1: stat.detailVal1,
+        detailVal2: stat.detailVal2,
+        countsForScore: stat.countsForScore,
       };
     });
   };
 
   const comparisons = p1 && p2 ? calculateComparisons(p1, p2) : [];
-  const scoreP1 = comparisons.filter((c) => c.winner === 1).length;
-  const scoreP2 = comparisons.filter((c) => c.winner === 2).length;
+  const scoreP1 = comparisons.filter((c) => c.winner === 1 && c.countsForScore !== false).length;
+  const scoreP2 = comparisons.filter((c) => c.winner === 2 && c.countsForScore !== false).length;
 
   return (
     <main className="arena-bg relative min-h-screen overflow-hidden p-4 font-sans text-slate-200 antialiased selection:bg-amber-500/30 md:p-8">
@@ -530,7 +546,7 @@ export default function Home() {
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
-                          <span className={`text-[10px] font-black tracking-[0.2em] uppercase ${color === "blue" ? "text-sky-300" : "text-purple-300"}`}>
+                          <span className={`text-[12px] font-black tracking-[0.2em] uppercase ${color === "blue" ? "text-sky-300" : "text-purple-300"}`}>
                             {color === "blue" ? "Jogador 1 · Azul" : "Jogador 2 · Roxo"}
                           </span>
                           <h3 className="mt-1 break-words text-xl font-black text-white">{player.name}</h3>
@@ -538,7 +554,7 @@ export default function Home() {
                         </div>
                         <div className={`rounded-xl border p-3 text-center ${color === "blue" ? "border-sky-400/25 bg-sky-400/10" : "border-purple-400/25 bg-purple-400/10"}`}>
                           <Shield className={`mx-auto mb-1 h-5 w-5 ${color === "blue" ? "text-sky-300" : "text-purple-300"}`} />
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">Nível</p>
+                          <p className="text-[11px] font-bold text-slate-400 uppercase">Nível</p>
                           <p className="text-lg font-black text-white">{player.expLevel}</p>
                         </div>
                       </div>
@@ -601,7 +617,10 @@ export default function Home() {
                         >
                           <div className={`flex min-w-0 items-center gap-1.5 text-left ${isP1 ? "text-sky-200" : "text-slate-300"}`}>
                             {isP1 && <Crown className="h-3.5 w-3.5 shrink-0 text-sky-300" />}
-                            <span className={`truncate text-xs sm:text-sm ${isP1 ? "font-black" : "font-semibold"}`}>{c.displayVal1}</span>
+                            <span className="flex min-w-0 flex-col">
+                              <span className={`truncate text-sm sm:text-base ${isP1 ? "font-black" : "font-semibold"}`}>{c.displayVal1}</span>
+                              {c.detailVal1 && <span className="truncate text-[9px] text-slate-500 sm:text-[10px]">{c.detailVal1}</span>}
+                            </span>
                           </div>
 
                           <div className="flex min-w-0 items-center justify-center gap-1.5 text-center text-[10px] font-medium text-slate-400 sm:gap-2 sm:text-xs">
@@ -610,7 +629,10 @@ export default function Home() {
                           </div>
 
                           <div className={`flex min-w-0 items-center justify-end gap-1.5 text-right ${isP2 ? "text-purple-200" : "text-slate-300"}`}>
-                            <span className={`truncate text-xs sm:text-sm ${isP2 ? "font-black" : "font-semibold"}`}>{c.displayVal2}</span>
+                            <span className="flex min-w-0 flex-col">
+                              <span className={`truncate text-sm sm:text-base ${isP2 ? "font-black" : "font-semibold"}`}>{c.displayVal2}</span>
+                              {c.detailVal2 && <span className="truncate text-[9px] text-slate-500 sm:text-[10px]">{c.detailVal2}</span>}
+                            </span>
                             {isP2 && <Crown className="h-3.5 w-3.5 shrink-0 text-purple-300" />}
                           </div>
                         </motion.div>
